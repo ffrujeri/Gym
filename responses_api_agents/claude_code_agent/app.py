@@ -651,7 +651,8 @@ class ClaudeCodeAgent(SimpleResponsesAPIAgent):
         request: Request,
         body: NeMoGymResponseCreateParamsNonStreaming = Body(),
     ) -> NeMoGymResponse:
-        return await self._create_response(body, rollout_id=request.path_params.get("rollout_id"))
+        rollout_id = getattr(request, "path_params", {}).get("rollout_id") if hasattr(request, "path_params") else None
+        return await self._create_response(body, rollout_id=rollout_id)
 
     async def _create_episode(
         self,
@@ -699,6 +700,7 @@ class ClaudeCodeAgent(SimpleResponsesAPIAgent):
         return AgentEpisode(response=response, observations=observations)
 
     async def run(self, request: Request, body: ClaudeCodeAgentRunRequest) -> ClaudeCodeAgentVerifyResponse:
+        """EpisodeProcessor orchestration for ClaudeCodeAgent rollout execution."""
         async with self.sem:
             cookies = request.cookies
 
@@ -712,10 +714,6 @@ class ClaudeCodeAgent(SimpleResponsesAPIAgent):
             cookies = seed_resp.cookies
             seed_resp_json = await get_response_json(seed_resp)
 
-            # The run-level skills_ref (stamped by rollout collection) rides on the request body
-            # (extra="allow"). Pass its path straight into _create_response so the CLI invocation
-            # can stage the skills into its per-request CLAUDE_CONFIG_DIR. run() calls _create_response
-            # in-process, so no metadata side-channel is needed (unlike the schema-forbidden HTTP path).
             skills_path = ((body.model_extra or {}).get(SKILLS_REF_KEY_NAME) or {}).get("path")
             rollout_id = self.rollout_id_from_run(body)
 
@@ -759,8 +757,10 @@ class ClaudeCodeAgent(SimpleResponsesAPIAgent):
             result = verify_json | {"turns_used": turns, "finished_naturally": naturally}
             if observations is not None:
                 result["ng_agent_observations"] = observations.model_dump(mode="json")
-            return ClaudeCodeAgentVerifyResponse.model_validate(result)
+            return gym_resp.model_copy(update=result)
+
 
 
 if __name__ == "__main__":
     ClaudeCodeAgent.run_webserver()
+

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,19 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""GymnasiumAgent is unified with SimpleAgent; both use SimpleAgent for policy generation."""
+"""simple_episode_processor is an alias for rlvr_episode_processor."""
 
-from responses_api_agents.simple_agent.app import (
-    SimpleAgent as GymnasiumAgent,
+from nemo_gym.episode_processor import (
+    RLVREpisodeProcessorServer as SimpleEpisodeProcessorServer,
 )
-from responses_api_agents.simple_agent.app import (
-    SimpleAgentConfig as GymnasiumAgentConfig,
-)
-from responses_api_agents.simple_agent.app import (
-    SimpleAgentRunRequest as GymnasiumAgentRunRequest,
-)
-
-__all__ = ["GymnasiumAgent", "GymnasiumAgentConfig", "GymnasiumAgentRunRequest"]
 
 if __name__ == "__main__":
-    GymnasiumAgent.run_webserver()
+    SimpleEpisodeProcessorServer.run_webserver()

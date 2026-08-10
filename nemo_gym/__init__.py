@@ -148,6 +148,13 @@ def print_always_flushes(*args, **kwargs) -> None:
 __builtins__["print"] = print_always_flushes
 
 
+from nemo_gym.episode_processor import (
+    BaseEpisodeProcessorConfig,
+    BaseEpisodeProcessorServer,
+    RLVREpisodeProcessorServer,
+    SimpleEpisodeProcessorServer,
+)
+
 from nemo_gym.package_info import (
     __contact_emails__,
     __contact_names__,
@@ -161,3 +168,4 @@ from nemo_gym.package_info import (
     __shortversion__,
     __version__,
 )
+

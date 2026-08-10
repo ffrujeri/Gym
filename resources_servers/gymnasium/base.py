@@ -70,30 +70,34 @@ def extract_text(response: NeMoGymResponse) -> str:
 
 
 class GymnasiumServer(SimpleResourcesServer):
-    """Gymnasium-style base class. Used with gymnasium_agent.
+    """Gymnasium-style base class. Fits into standard SimpleResourcesServer contract.
 
-    step() returns (observation, reward, terminated, truncated, info).
+    Supports both standard /seed_session + /verify interface and /reset + /step routes.
     """
 
     session_state: Dict[str, Any] = Field(default_factory=dict)
 
     def setup_webserver(self) -> FastAPI:
-        app = FastAPI()
-        self.setup_session_middleware(app)
-        app.add_middleware(RolloutContextMiddleware)
+        app = super().setup_webserver()
         app.post("/reset")(self._reset_endpoint)
         app.post("/step")(self._step_endpoint)
-        app.post("/aggregate_metrics")(self.aggregate_metrics)
         return app
+
+    async def seed_session(self, body: BaseSeedSessionRequest) -> BaseSeedSessionResponse:
+        return BaseSeedSessionResponse()
 
     async def _reset_endpoint(self, body: EnvResetRequest, request: Request) -> EnvResetResponse:
         session_id = request.session.get(SESSION_ID_KEY)
         obs, info = await self.reset(body.model_extra or {}, session_id)
+        if session_id:
+            self.session_state[session_id] = {"total_reward": 0.0, "observation": obs, "info": info}
         return EnvResetResponse(observation=obs, info=info)
 
     async def _step_endpoint(self, body: EnvStepRequest, request: Request) -> EnvStepResponse:
         session_id = request.session.get(SESSION_ID_KEY)
         obs, reward, terminated, truncated, info = await self.step(body.response, body.model_extra or {}, session_id)
+        if session_id and session_id in self.session_state:
+            self.session_state[session_id]["total_reward"] += reward
         if terminated or truncated:
             await self.close_session(session_id)
         return EnvStepResponse(observation=obs, reward=reward, terminated=terminated, truncated=truncated, info=info)
@@ -113,5 +117,11 @@ class GymnasiumServer(SimpleResourcesServer):
     def tool_output(call: NeMoGymResponseFunctionToolCall, result: Any) -> dict:
         return {"call_id": call.call_id, "output": json.dumps(result, default=str)}
 
-    async def verify(self, body: BaseVerifyRequest) -> None:  # type: ignore[override]
-        raise NotImplementedError("GymnasiumServer uses /step instead of /verify. Use with gymnasium_agent.")
+    async def verify(self, body: BaseVerifyRequest) -> BaseVerifyResponse:
+        reward = 0.0
+        return BaseVerifyResponse(
+            responses_create_params=body.responses_create_params,
+            response=body.response,
+            reward=reward,
+        )
+

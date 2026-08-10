@@ -126,8 +126,14 @@ class AgentServerRef(BaseModel):
     name: str
 
 
-ServerRef = Union[ModelServerRef, ResourcesServerRef, AgentServerRef]
+class EpisodeProcessorRef(BaseModel):
+    type: Literal["episode_processors"]
+    name: str
+
+
+ServerRef = Union[ModelServerRef, ResourcesServerRef, AgentServerRef, EpisodeProcessorRef]
 ServerRefTypeAdapter = TypeAdapter(ServerRef)
+
 
 
 def is_server_ref(config_dict: DictConfig) -> Optional[ServerRef]:

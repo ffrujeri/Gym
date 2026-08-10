@@ -26,6 +26,7 @@ from nemo_gym.base_resources_server import (
     BaseVerifyResponse,
 )
 from nemo_gym.config_types import ROLLOUT_PATH_PREFIX
+from nemo_gym.episode_processor import SimpleEpisodeProcessorAdapter
 from nemo_gym.global_config import OBSERVABILITY_ENABLED_KEY_NAME, get_first_server_config_dict
 from nemo_gym.openai_utils import (
     NeMoGymResponse,
@@ -52,6 +53,10 @@ class BaseResponsesAPIAgent(BaseServer):
 
 class SimpleResponsesAPIAgent(BaseResponsesAPIAgent, AggregateMetricsMixin, SimpleServer):
     config: BaseResponsesAPIAgentConfig
+
+    def get_episode_processor(self) -> SimpleEpisodeProcessorAdapter:
+        return SimpleEpisodeProcessorAdapter(self)
+
 
     def setup_webserver(self) -> FastAPI:
         app = FastAPI()
@@ -139,9 +144,8 @@ class SimpleResponsesAPIAgent(BaseResponsesAPIAgent, AggregateMetricsMixin, Simp
     async def responses(self, body: NeMoGymResponseCreateParamsNonStreaming = Body()) -> NeMoGymResponse:
         pass
 
-    @abstractmethod
-    async def run(self, body: BaseRunRequest = Body()) -> BaseVerifyResponse:
-        pass
+    async def run(self, request: Optional[Request] = None, body: BaseRunRequest = Body()) -> NeMoGymResponse:
+        return await self.get_episode_processor().run(request, body)
 
     async def aggregate_metrics(self, body: AggregateMetricsRequest = Body()) -> AggregateMetrics:
         """Default: same RewardProfiler aggregation as resources server. Override to proxy."""
@@ -150,3 +154,4 @@ class SimpleResponsesAPIAgent(BaseResponsesAPIAgent, AggregateMetricsMixin, Simp
             compute_metrics_fn=self.compute_metrics,
             get_key_metrics_fn=self.get_key_metrics,
         )
+
